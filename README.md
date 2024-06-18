@@ -1,6 +1,6 @@
 # 5gla-automated-orthophotos
 
-Aufsetzen S3 speicher:
+## Aufsetzen S3 speicher:
 All commands were performed as root, so there is no need for the sudo prefix
 
 * * *
