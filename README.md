@@ -38,10 +38,10 @@ systemctl enable minio
 
 ```
 cat << EOF >/etc/default/minio
-MINIO_ACCESS_KEY="Mso8cQTGAa3CDssBmh8tdWWol2Dy0qsa"
-MINIO_SECRET_KEY="YWdOyIc7bgcuRw7XWC4R1u6YPA3DMJGp"
+MINIO_ACCESS_KEY="REPLACE_ME"
+MINIO_SECRET_KEY="REPLACE_ME"
 MINIO_VOLUMES="/usr/local/share/minio/"
-MINIO_OPTS="-C /etc/minio --address 192.168.2.38:9000"
+MINIO_OPTS="-C /etc/minio --address REPLACE_ME"
 EOF
 ```
 
