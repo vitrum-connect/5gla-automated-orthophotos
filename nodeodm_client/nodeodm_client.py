@@ -1,8 +1,8 @@
-import os
-import requests
-import time
 import json
-import zipfile
+import os
+import time
+
+import requests
 
 from custom_logger.custom_logger import CustomLogger
 
@@ -35,7 +35,7 @@ class NodeodmClient:
         response = requests.get(url)
         response.raise_for_status()
         if response.status_code != 200:
-            self.logger.log_warning(f"Error fetching data from {url}: {response['text']}")
+            self.logger.log_warning(f"Error fetching data from {url}: {response.text}")
         return response
 
     def http_post(self, url, data, files=None):
