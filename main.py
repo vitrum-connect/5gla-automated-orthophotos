@@ -3,11 +3,23 @@ import os
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security.api_key import APIKeyHeader, APIKey
 from starlette.status import HTTP_403_FORBIDDEN
+from fastapi.middleware.cors import CORSMiddleware
 
 from nodeodm_client import NodeodmClient
 
 app = FastAPI()
 
+origins = [
+    "*"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 IMAGE_DIR = os.getenv('IMAGE_DIR')
 API_KEY = os.getenv('API_KEY')
