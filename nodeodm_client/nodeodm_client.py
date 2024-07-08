@@ -31,6 +31,7 @@ class NodeodmClient:
         # self.odm_output_dir = os.path.join(self.project_dir, 'odm_output')
         self.nodeodm_url = 'http://192.168.2.39:4000'
         self.logger = CustomLogger()
+        self.CHUNK_SIZE = 20
 
     def http_get(self, url):
         response = requests.get(url)
@@ -93,13 +94,33 @@ class NodeodmClient:
         return True
 
     def task_new_upload(self, task_id, images_path):
-        files = [(f'images', open(os.path.join(images_path, f), 'rb')) for f in os.listdir(images_path) if
-                 os.path.isfile(os.path.join(images_path, f))]
-        response = self.http_post(f'{self.nodeodm_url}/task/new/upload/{task_id}', files=files, data={})
-        if response.status_code != 200:
-            self.logger.log_warning(f"Error creating task: {response.text}")
-            return None
-        self.logger.log_info(f'Images were uploaded to task with UUID: {task_id} .')
+        # List all files in the directory
+        files_to_upload = [f for f in os.listdir(images_path) if os.path.isfile(os.path.join(images_path, f))]
+
+        # Split files into chunks
+        for i in range(0, len(files_to_upload), self.CHUNK_SIZE):
+            chunk_files = files_to_upload[i:i + self.CHUNK_SIZE]
+            files = [(f'images', open(os.path.join(images_path, f), 'rb')) for f in chunk_files]
+
+            try:
+                # Make HTTP POST request
+                response = self.http_post(f'{self.nodeodm_url}/task/new/upload/{task_id}', files=files, data={})
+
+                # Check response status
+                if response.status_code != 200:
+                    self.logger.log_warning(
+                        f"Error uploading chunk {i // self.CHUNK_SIZE + 1} for task {task_id}: {response.text}")
+                    return None
+
+                self.logger.log_info(
+                    f'Uploaded chunk {i // self.CHUNK_SIZE + 1} of {len(files_to_upload) // self.CHUNK_SIZE} to task with UUID: {task_id} .')
+
+            finally:
+                # Ensure files are closed
+                for _, file_obj in files:
+                    file_obj.close()
+
+        self.logger.log_info(f'All images uploaded to task with UUID: {task_id} .')
         return True
 
     def download_results(self, task_id, output_dir):
