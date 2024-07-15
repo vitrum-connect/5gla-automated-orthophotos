@@ -1,9 +1,10 @@
+import json
 import os
 
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyHeader, APIKey
 from starlette.status import HTTP_403_FORBIDDEN
-from fastapi.middleware.cors import CORSMiddleware
 
 from nodeodm_client import NodeodmClient
 
@@ -21,14 +22,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-IMAGE_DIR = os.getenv('IMAGE_DIR')
-API_KEY = os.getenv('API_KEY')
-print(f"API_KEY")
-print(API_KEY)
-print(f"IMAGE_DIR")
-print(IMAGE_DIR)
-API_KEY_NAME = "access_token"
 
+
+with open('config.json', 'r') as file:
+    config = json.load(file)
+
+API_KEY = config['API_KEY']
+IMAGE_DIR = config['IMAGE_DIR']
+API_KEY_NAME = "access_token"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 

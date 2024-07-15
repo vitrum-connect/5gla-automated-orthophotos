@@ -26,14 +26,17 @@ class NodeodmClient:
     def __init__(self, image_dir):
         temp = os.path.dirname(os.path.abspath(__file__))
         self.project_dir = os.path.dirname(temp)
-        # self.local_image_dir = os.path.join(self.project_dir, 'images')
         self.image_dir = image_dir
-        # self.odm_output_dir = os.path.join(self.project_dir, 'odm_output')
         self.nodeodm_url = 'http://192.168.2.39:4000'
         self.logger = CustomLogger()
         self.CHUNK_SIZE = 20
 
     def http_get(self, url):
+        """ Makes a HTTP GET request to a given URL.
+
+        :param url: The URL to make the request to
+        :return: The response of the request
+        """
         response = requests.get(url)
         response.raise_for_status()
         if response.status_code != 200:
@@ -41,6 +44,14 @@ class NodeodmClient:
         return response
 
     def http_post(self, url, data, files=None):
+        """ Makes a HTTP POST request to a specified URL.
+
+        :param url: The URL to make the request to
+        :param data: The data to send in the request
+        :param files: The files to send in the request
+
+        :return: The response of the request
+        """
         response = requests.post(url, data=data, files=files)
         response.raise_for_status()
         if response.status_code != 200:
@@ -58,11 +69,16 @@ class NodeodmClient:
         response_json = json.loads(response.text)
         if response.status_code != 200:
             self.logger.log_warning(f"Error removing task {task_id}: {response_json['text']}")
-            return None
+            return
         self.logger.log_info(f"Task {task_id} removed.")
-        return True
+        return
 
     def get_task_status(self, task_id):
+        """ Gets the status of a task on NodeODM.
+
+        :param task_id: The task ID to get the status for
+        :return: The status code of the task or None if an error occurred
+        """
         try:
             response = self.http_get(f'{self.nodeodm_url}/task/{task_id}/info')
             response_json = json.loads(response.text)
@@ -76,7 +92,16 @@ class NodeodmClient:
             return None
 
     def create_task_new_init(self, options):
-        response = self.http_post(f'{self.nodeodm_url}/task/new/init', data=options)
+        """ Creates a new task on NodeODM.
+
+        :param options: The options for the task
+        :return: The task ID of the created task or None if an error occurred
+        """
+        options_json = json.dumps(options)
+        files = {
+            'options': (None, options_json, 'application/json')
+        }
+        response = self.http_post(f'{self.nodeodm_url}/task/new/init', data={}, files=files)
         response_json = json.loads(response.text)
         if response.status_code != 200:
             self.logger.log_warning(f"Error creating task: {response.text}")
@@ -86,37 +111,46 @@ class NodeodmClient:
         return task_id
 
     def task_new_commit(self, task_id):
+        """ Starts a task on NodeODM.
+
+        :param task_id: The task ID to start
+        :return: True if the task was started successfully, False if an error occurred
+        """
         response = self.http_post(f'{self.nodeodm_url}/task/new/commit/{task_id}', data={})
         if response.status_code != 200:
-            self.logger.log_warning(f"Error creating task: {response.text}")
-            return None
-        self.logger.log_info(f'Images were committed to task with UUID: {task_id} .')
+            self.logger.log_warning(f"Error starting task: {response.text}")
+            return False
+        self.logger.log_info(f'Task with UUID: {task_id} was started successfully.')
         return True
 
     def task_new_upload(self, task_id, images_path):
-        # List all files in the directory
+        """ Uploads images to a task on NodeODM. The images are uploaded in chunks of 20 images.
+        It is neccessary to upload the images in chunks because otherwise python will open too many files at once.
+
+        :param task_id: The task ID to upload the images to
+        :param images_path: The path to the directory containing the images
+        :return: True if the images were uploaded successfully, False if an error occurred
+        """
         files_to_upload = [f for f in os.listdir(images_path) if os.path.isfile(os.path.join(images_path, f))]
 
-        # Split files into chunks
         for i in range(0, len(files_to_upload), self.CHUNK_SIZE):
             chunk_files = files_to_upload[i:i + self.CHUNK_SIZE]
             files = [(f'images', open(os.path.join(images_path, f), 'rb')) for f in chunk_files]
 
             try:
-                # Make HTTP POST request
                 response = self.http_post(f'{self.nodeodm_url}/task/new/upload/{task_id}', files=files, data={})
 
-                # Check response status
                 if response.status_code != 200:
                     self.logger.log_warning(
                         f"Error uploading chunk {i // self.CHUNK_SIZE + 1} for task {task_id}: {response.text}")
-                    return None
+                    return False
 
                 self.logger.log_info(
                     f'Uploaded chunk {i // self.CHUNK_SIZE + 1} of {len(files_to_upload) // self.CHUNK_SIZE} to task with UUID: {task_id} .')
-
+            except Exception as e:
+                self.logger.log_warning(f"An error occurred: {str(e)}")
+                return False
             finally:
-                # Ensure files are closed
                 for _, file_obj in files:
                     file_obj.close()
 
@@ -124,6 +158,12 @@ class NodeodmClient:
         return True
 
     def download_results(self, task_id, output_dir):
+        """ Downloads the results of a task from NodeODM to a specified directory.
+
+        :param task_id: The task ID for the NodeODM process
+        :param output_dir: The directory to download the results to
+        :return:
+        """
         response = self.http_get(f'{self.nodeodm_url}/task/{task_id}/download/all.zip')
         content = response.content
         if response.status_code != 200:
@@ -135,8 +175,17 @@ class NodeodmClient:
         self.logger.log_info(f"Results downloaded to {zip_path}")
 
     async def process_task(self, task_id, transaction_image_dir):
+        """ Processes a task on NodeODM by uploading images, waiting for the task to finish and downloading the results.
+
+        :param task_id: The task ID for the NodeODM process
+        :param transaction_image_dir: The directory containing the images for the transaction
+        :return:
+        """
         try:
-            self.task_new_upload(task_id, transaction_image_dir)
+            uploaded_successfully = self.task_new_upload(task_id, transaction_image_dir)
+            if not uploaded_successfully:
+                self.logger.log_warning(f"Uploading images failed for task {task_id}.")
+                return None
             self.task_new_commit(task_id)
             status_code = 0
             while status_code != 40 and status_code != 30 and status_code != 50:
@@ -144,11 +193,8 @@ class NodeodmClient:
                 self.logger.log_info(switch_case(status_code))
                 if status_code is None:
                     self.logger.log_warning("Error getting task status.")
-                    return
+                    return None
                 await asyncio.sleep(60)
-
-            if status_code == 30 or status_code == 50:
-                return
             if status_code == 40:
                 self.download_results(task_id, transaction_image_dir)
                 self.remove_task(task_id)
@@ -160,17 +206,18 @@ class NodeodmClient:
         Calculates an orthophoto for a given transaction ID. This function creates a new task on NodeODM and uploads the images.
         The function is not waiting for the task to finish, but returns the task ID.
 
-        :param transaction_id: The transaction ID to calculate the orthophoto for
+        :param transaction_id: The transaction ID of the image set to calculate the orthophoto for
         :return: The task ID of the created task or None if an error occurred
         """
         try:
-            task_options = {
-                'end-with': 'odm_orthophoto',
-                'feature-quality': 'high',
-                'skip-3dmodel': 'true',
-                'fast-orthophoto': 'true',
-                'pc-quality': 'high'
-            }
+            os.mkdir('logs')
+        except FileExistsError:
+            pass
+        try:
+            task_options = [
+                {"name": "fast-orthophoto", "value": "true"},
+                {"name": "skip-3dmodel", "value": "true"}
+            ]
             transaction_image_dir = os.path.join(self.image_dir, transaction_id)
             if not os.path.exists(transaction_image_dir):
                 self.logger.log_warning(f"Image directory {transaction_image_dir} does not exist. Exiting.")
@@ -180,7 +227,7 @@ class NodeodmClient:
                 self.logger.log_warning("Calculating the orthophoto failed.")
                 return None
             asyncio.create_task(self.process_task(task_id, transaction_image_dir))
-            return task_id  # Return the task_id
+            return task_id
 
         except Exception as e:
             self.logger.log_warning(f"An error occurred: {str(e)}")
