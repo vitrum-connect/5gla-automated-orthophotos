@@ -1,12 +1,10 @@
 import asyncio
 import json
-import os
 import logging
 import logging.config
+import os
+
 import requests
-
-
-# from src.custom_logger.custom_logger import CustomLogger
 
 
 def switch_case(status_code):
@@ -32,7 +30,6 @@ class NodeodmClient:
         self.project_dir = os.path.dirname(temp)
         self.image_dir = image_dir
         self.nodeodm_url = nodeodm_url
-        # self.logger = CustomLogger()
         self.CHUNK_SIZE = 20
 
     def http_get(self, url):

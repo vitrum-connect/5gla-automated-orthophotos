@@ -50,6 +50,7 @@ async def get_api_key(
 @app.get("/calculate_orthophoto/{transaction_id}", responses={
     200: {"description": "Task created successfully"},
     404: {"description": "No images for transaction ID in S3 bucket"},
+    500: {"description": "Error creating task. Please check the logs."}
 })
 async def calculate_orthophoto(transaction_id: str, api_key: APIKey = Depends(get_api_key)):
     """ Calculates an orthophoto for a given transaction ID
