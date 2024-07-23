@@ -4,33 +4,36 @@ import os
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyHeader, APIKey
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_200_OK
+from starlette.responses import JSONResponse
 
-from nodeodm_client import NodeodmClient
+from .nodeodm_client import NodeodmClient
+
+API_KEY = os.environ['API_KEY']
+IMAGE_DIR = os.environ['IMAGE_DIR']
+NODEODM_ENDPOINT = os.environ['NODEODM_ENDPOINT']
+ALLOWED_ORIGINS = os.environ['ALLOWED_ORIGINS']
 
 app = FastAPI()
 
 origins = [
-    "*"
+    ALLOWED_ORIGINS
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["get"],
     allow_headers=["*"],
 )
-
-
 
 with open('config.json', 'r') as file:
     config = json.load(file)
 
-API_KEY = config['API_KEY']
-IMAGE_DIR = config['IMAGE_DIR']
-API_KEY_NAME = "access_token"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+TASK_OPTIONS = config['TASK_OPTIONS']
+
+api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 
 
 async def get_api_key(
@@ -56,8 +59,11 @@ async def calculate_orthophoto(transaction_id: str, api_key: APIKey = Depends(ge
     :return: The task ID of the created task or an HttpException 404 if an error occurred
 
     """
-    nodeodm_client = NodeodmClient(IMAGE_DIR)
-    task_id = await nodeodm_client.calculate_orthophoto(transaction_id)
-    if task_id is None:
-        raise HTTPException(status_code=404, detail="No images for transaction ID in S3 bucket")
-    return {"uuid": task_id}
+    nodeodm_client = NodeodmClient(IMAGE_DIR, NODEODM_ENDPOINT)
+    task_id, code = await nodeodm_client.calculate_orthophoto(transaction_id, TASK_OPTIONS)
+    if code == 404:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No images for transaction ID in S3 bucket")
+    if code == 500:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error creating task. Please check the logs.")
+    return JSONResponse(content={"uuid": task_id}, status_code=HTTP_200_OK)
