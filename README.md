@@ -3,6 +3,7 @@ All commands were performed as root, so there is no need for the sudo prefix
 
 * * *
 
+
 ## Setup S3 storage:
 
 ### Create user for minio
