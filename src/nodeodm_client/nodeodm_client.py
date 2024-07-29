@@ -32,33 +32,6 @@ class NodeodmClient:
         self.nodeodm_url = nodeodm_url
         self.CHUNK_SIZE = 20
 
-    def http_get(self, url):
-        """ Makes an HTTP GET request to a given URL.
-
-        :param url: The URL to make the request to
-        :return: The response of the request
-        """
-        response = requests.get(url)
-        response.raise_for_status()
-        if response.status_code != 200:
-            self.logger.warning(f"Error fetching data from {url}: {response.text}")
-        return response
-
-    def http_post(self, url, data, files=None):
-        """ Makes an HTTP POST request to a specified URL.
-
-        :param url: The URL to make the request to
-        :param data: The data to send in the request
-        :param files: The files to send in the request
-
-        :return: The response of the request
-        """
-        response = requests.post(url, data=data, files=files)
-        response.raise_for_status()
-        if response.status_code != 200:
-            self.logger.warning(f"Error posting data to {url}: {response.text}")
-        return response
-
     def remove_task(self, task_id):
         """ Removes a task from NodeODM
 
@@ -66,7 +39,8 @@ class NodeodmClient:
         :return: True if the task was removed successfully, None if an error occurred
 
         """
-        response = self.http_post(f'{self.nodeodm_url}/task/remove', data={'uuid': task_id})
+        response = requests.post(f'{self.nodeodm_url}/task/remove', data={'uuid': task_id})
+        response.raise_for_status()
         response_json = json.loads(response.text)
         if response.status_code != 200:
             self.logger.warning(f"Error removing task {task_id}: {response_json['text']}")
@@ -81,7 +55,8 @@ class NodeodmClient:
         :return: The status code of the task or None if an error occurred
         """
         try:
-            response = self.http_get(f'{self.nodeodm_url}/task/{task_id}/info')
+            response = requests.get(f'{self.nodeodm_url}/task/{task_id}/info')
+            response.raise_for_status()
             response_json = json.loads(response.text)
             if response.status_code != 200:
                 self.logger.warning(f"Error getting task status for task {task_id}: {response.text}")
@@ -102,7 +77,8 @@ class NodeodmClient:
         files = {
             'options': (None, options_json, 'application/json')
         }
-        response = self.http_post(f'{self.nodeodm_url}/task/new/init', data={}, files=files)
+        response = requests.post(f'{self.nodeodm_url}/task/new/init', files=files)
+        response.raise_for_status()
         response_json = json.loads(response.text)
         if response.status_code != 200:
             self.logger.warning(f"Error creating task: {response.text}")
@@ -111,13 +87,14 @@ class NodeodmClient:
         self.logger.info(f'Creating task with UUID: {task_id} .')
         return task_id
 
-    def task_new_commit(self, task_id):
+    def create_task_new_commit(self, task_id):
         """ Starts a task on NodeODM.
 
         :param task_id: The task ID to start
         :return: True if the task was started successfully, False if an error occurred
         """
-        response = self.http_post(f'{self.nodeodm_url}/task/new/commit/{task_id}', data={})
+        response = requests.post(f'{self.nodeodm_url}/task/new/commit/{task_id}')
+        response.raise_for_status()
         if response.status_code != 200:
             self.logger.warning(f"Error starting task: {response.text}")
             return False
@@ -139,8 +116,8 @@ class NodeodmClient:
             files = [(f'images', open(os.path.join(images_path, f), 'rb')) for f in chunk_files]
 
             try:
-                response = self.http_post(f'{self.nodeodm_url}/task/new/upload/{task_id}', files=files, data={})
-
+                response = requests.post(f'{self.nodeodm_url}/task/new/upload/{task_id}', files=files, data={})
+                response.raise_for_status()
                 if response.status_code != 200:
                     self.logger.warning(
                         f"Error uploading chunk {i // self.CHUNK_SIZE + 1} for task {task_id}: {response.text}")
@@ -166,7 +143,8 @@ class NodeodmClient:
         :param output_dir: The directory to download the results to
         :return:
         """
-        response = self.http_get(f'{self.nodeodm_url}/task/{task_id}/download/all.zip')
+        response = requests.get(f'{self.nodeodm_url}/task/{task_id}/download/all.zip')
+        response.raise_for_status()
         content = response.content
         if response.status_code != 200:
             self.logger.warning(f"Error downloading results for task {task_id}: {response.text}")
