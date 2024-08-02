@@ -130,7 +130,7 @@ Don’t delete the “nodeodm-1” service which is necessary to run the whole c
 docker-compose up -d
 ```
 
-## Create a new nodeodm debian 12 VM
+### Create a new nodeodm debian 12 VM
 
 ```bash
 nodeodm-1 ip address: "IP_ADDRESS_NODE_1"
@@ -163,7 +163,7 @@ services:
 docker-compose up -d
 ```
 
-## Back on ClusterODM add the new node to ClusterODM
+### Back on ClusterODM add the new node to ClusterODM
 
 ```bash
 telnet localhost 8080
@@ -171,3 +171,39 @@ node add "IP_ADDRESS_NODE_1" 3001
 node list
 quit
 ```
+
+## Setup NodeOdm Client
+
+### Install Git and Clone repository
+```
+sudo apt-get install git 
+git clone https://github.com/vitrum-connect/5gla-automated-orthophotos.git
+```
+
+### Install  Python, PIP and Virtual Environment
+```
+sudo apt-get install python3 python3-pip python3-venv
+```
+
+### Open Port
+```
+sudo apt-get install ufw
+sudo ufw allow 8000/tcp
+```
+
+### Setup environment
+```
+sudo python3 -m venv fivegla_env
+source fivegla_env/bin/activate
+```
+### Install Dependencys
+```
+pip install fastapi uvicorn
+pip install requests
+```
+
+### Configure Client
+Configure the config.json to set the image directory, the API key and the Nodeodm endpoint URL.
+
+### Start Script
+uvicorn main:app --host 0.0.0.0 --port 8000

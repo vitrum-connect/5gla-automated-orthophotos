@@ -1,0 +1,12 @@
+{
+  "TASK_OPTIONS": [
+    {
+      "name": "fast-orthophoto",
+      "value": "true"
+    },
+    {
+      "name": "skip-3dmodel",
+      "value": "true"
+    }
+  ]
+}
