@@ -7,6 +7,9 @@ import os
 import requests
 
 
+FIVEGLA_API_URL = os.environ['5GLA_API_URL']
+
+
 def switch_case(status_code):
     switcher = {
         10: "Task queued.",
@@ -154,10 +157,11 @@ class NodeodmClient:
             f.write(content)
         self.logger.info(f"Results downloaded to {zip_path}")
 
-    async def process_task(self, task_id, transaction_image_dir):
+    async def process_task(self, task_id, transaction_id, transaction_image_dir):
         """ Processes a task on NodeODM by uploading images, waiting for the task to finish and downloading the results.
 
         :param task_id: The task ID for the NodeODM process
+        :param transaction_id: The transaction ID of the image set
         :param transaction_image_dir: The directory containing the images for the transaction
         :return:
         """
@@ -178,8 +182,23 @@ class NodeodmClient:
             if status_code == 40:
                 self.download_results(task_id, transaction_image_dir)
                 self.remove_task(task_id)
+                self.send_notification_since_results_are_ready(transaction_id)
         except Exception as e:
             self.logger.warning(f"An error occurred: {str(e)}")
+
+    def send_notification_since_results_are_ready(self, transaction_id):
+        """ Sends a notification that the results are ready.
+
+        :param transaction_id: The transaction ID of the image set
+        :return:
+        """
+        self.logger.info(f"Results for transaction {transaction_id} are ready.")
+        response = requests.post(f'{FIVEGLA_API_URL}/images/{transaction_id}/mark-as-processed')
+        response.raise_for_status()
+        if response.status_code != 200:
+            self.logger.warning(f"Error sending notification for transaction {transaction_id}: {response.text}")
+            return
+        self.logger.info(f"Notification sent for transaction {transaction_id}.")
 
     async def calculate_orthophoto(self, transaction_id, task_options):
         """
@@ -205,7 +224,7 @@ class NodeodmClient:
                 self.logger.warning("Calculating the orthophoto failed.")
                 code = 500
                 return None, code
-            asyncio.create_task(self.process_task(task_id, transaction_image_dir))
+            asyncio.create_task(self.process_task(task_id, transaction_id, transaction_image_dir))
             code = 200
             return task_id, code
 
