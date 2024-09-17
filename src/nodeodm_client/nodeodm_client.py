@@ -170,7 +170,7 @@ class NodeodmClient:
             if not uploaded_successfully:
                 self.logger.warning(f"Uploading images failed for task {task_id}.")
                 return None
-            self.task_new_commit(task_id)
+            self.create_task_new_commit(task_id)
             status_code = 0
             while status_code != 40 and status_code != 30 and status_code != 50:
                 status_code = self.get_task_status(task_id)
