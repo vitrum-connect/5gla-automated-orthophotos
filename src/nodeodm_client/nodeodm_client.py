@@ -8,6 +8,7 @@ import requests
 
 
 FIVEGLA_API_URL = os.environ['5GLA_API_URL']
+API_KEY = os.environ['API_KEY']
 
 
 def switch_case(status_code):
@@ -192,8 +193,11 @@ class NodeodmClient:
         :param transaction_id: The transaction ID of the image set
         :return:
         """
+        headers = {
+            "X-API-KEY": API_KEY
+        }
         self.logger.info(f"Results for transaction {transaction_id} are ready.")
-        response = requests.post(f'{FIVEGLA_API_URL}/images/{transaction_id}/mark-as-processed')
+        response = requests.post(f'{FIVEGLA_API_URL}/images/{transaction_id}/mark-as-processed', headers=headers)
         response.raise_for_status()
         if response.status_code != 200:
             self.logger.warning(f"Error sending notification for transaction {transaction_id}: {response.text}")
