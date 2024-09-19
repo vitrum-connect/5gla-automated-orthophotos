@@ -7,7 +7,7 @@ import os
 import requests
 
 
-FIVEGLA_API_URL = os.environ['5GLA_API_URL']
+FIVEGLA_API_URL = os.environ['FIVEGLA_API_URL']
 API_KEY = os.environ['API_KEY']
 
 
