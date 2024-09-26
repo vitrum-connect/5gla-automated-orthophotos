@@ -7,7 +7,7 @@ from fastapi.security.api_key import APIKeyHeader, APIKey
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_200_OK
 from starlette.responses import JSONResponse
 
-from .nodeodm_client import NodeodmClient
+from nodeodm_client import NodeodmClient
 
 API_KEY = os.environ['API_KEY']
 IMAGE_DIR = os.environ['IMAGE_DIR']
@@ -68,3 +68,16 @@ async def calculate_orthophoto(transaction_id: str, api_key: APIKey = Depends(ge
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="Error creating task. Please check the logs.")
     return JSONResponse(content={"uuid": task_id}, status_code=HTTP_200_OK)
+
+
+def check_if_folder_exists():
+    """ Check if the log directory exists
+        :return None
+    """
+
+    folder_path = 'logs'
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+
+check_if_folder_exists()
